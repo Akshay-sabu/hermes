@@ -1,26 +1,24 @@
 package com.hodos.hermes.dao;
-
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
 import java.time.LocalDateTime;
-@Data
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 @Table(name="otp")
 @Entity
 public class OTPDao {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private long id;
-    private long travellerId;
+    @Column(unique = true)
+    private String email;
     private String otp;
     private LocalDateTime expiryTime;
-
-    public OTPDao(long travellerId, String otp, LocalDateTime expiryTime) {
-        this.travellerId = travellerId;
-        this.otp = otp;
-        this.expiryTime = expiryTime;
-    }
-
     public boolean isExpired() {
         return LocalDateTime.now().isAfter(expiryTime);
     }
