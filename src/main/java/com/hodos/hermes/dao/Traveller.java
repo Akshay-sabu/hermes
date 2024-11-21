@@ -19,7 +19,7 @@ public class Traveller {
     @Column(name = "name")
     private String name;
 
-    @Column(name = "email",unique = true)
+    @Column(name = "email")
     private String email;
 
     @OneToMany(mappedBy = "traveller")

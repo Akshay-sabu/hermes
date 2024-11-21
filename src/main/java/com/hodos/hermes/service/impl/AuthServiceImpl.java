@@ -12,6 +12,7 @@ import com.hodos.hermes.exceptions.ErrorTypes;
 import com.hodos.hermes.service.AuthService;
 import io.micrometer.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +33,7 @@ public class AuthServiceImpl implements AuthService {
     @Value("${otp.expiration.time}")
     private Integer OTP_EXPIRATION_TIME;
 
+    @Autowired
     public AuthServiceImpl(TravellerScrolls travellerScrolls,
                            OTPScrolls otpScrolls,
                            EmailService emailService,
@@ -64,6 +66,8 @@ public class AuthServiceImpl implements AuthService {
             emailService.sendSimpleEmail(emailId, "Welcome", String.format("Your OTP is: %s", otpDao.getOtp()));
             return "OTP sent successfully";
 
+        } catch (CustomException ce) {
+            throw new CustomException(ce.getErrorTypes(), ce.getMessage());
         } catch (Exception e) {
             log.error("Error occurred while sending OTP: ", e);
             throw new CustomException(ErrorTypes.ERROR, "Something went wrong");
@@ -93,7 +97,11 @@ public class AuthServiceImpl implements AuthService {
 
             Optional<Traveller> optionalTraveller = travellerScrolls.findByEmail(emailId);
             if (optionalTraveller.isEmpty()) {
-                throw new CustomException(ErrorTypes.NOT_FOUND, "Traveller not found");
+                return LoginResponse.builder()
+                        .isOtpVerified(true)
+                        .isTravellerExist(false)
+                        .travellerDto(null)
+                        .build();
             }
 
             Traveller traveller = optionalTraveller.get();
@@ -107,10 +115,32 @@ public class AuthServiceImpl implements AuthService {
                     .travellerDto(travellerDto)
                     .build();
 
+        } catch (CustomException ce) {
+            throw new CustomException(ce.getErrorTypes(), ce.getMessage());
         } catch (Exception e) {
             log.error("Error occurred while verifying OTP and logging in: ", e);
             throw new CustomException(ErrorTypes.ERROR, "Something went wrong");
         }
+    }
+
+    @Override
+    public String registerTravellerIfNotExist(TravellerDto travellerDto) {
+        try {
+            String email = travellerDto.getEmail();
+            Optional<Traveller> optionalTraveller = travellerScrolls.findByEmail(email);
+            if (optionalTraveller.isPresent()) {
+                throw new CustomException(ErrorTypes.ALREADY_EXISTING, "User exist");
+            }
+            Traveller traveller = objectMapper.convertValue(travellerDto, Traveller.class);
+            travellerScrolls.save(traveller);
+            return "Saved successfully";
+        } catch (CustomException ce) {
+            throw new CustomException(ce.getErrorTypes(), ce.getMessage());
+        } catch (Exception e) {
+            log.error("Error - > ", e);
+            throw new CustomException(ErrorTypes.ERROR);
+        }
+
     }
 
     private OTPDao createOtp(String emailId) {
