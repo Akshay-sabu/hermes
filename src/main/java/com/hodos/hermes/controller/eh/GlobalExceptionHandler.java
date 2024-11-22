@@ -15,6 +15,7 @@ public class GlobalExceptionHandler {
                 .msg(customException.getErrorTypes().getMessage())
                 .internalStatusCode(customException.getErrorTypes().getInternalStatusCode())
                 .cause(customException.getMessage())
+                .errorList(customException.getErrors())
                 .build();
         return new ResponseEntity<>(errorResponse,customException.getErrorTypes().getHttpStatus());
     }
