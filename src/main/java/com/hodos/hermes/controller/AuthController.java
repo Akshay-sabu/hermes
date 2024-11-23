@@ -6,7 +6,6 @@ import com.hodos.hermes.exceptions.CustomException;
 import com.hodos.hermes.exceptions.Error;
 import com.hodos.hermes.exceptions.ErrorTypes;
 import com.hodos.hermes.service.AuthService;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,7 +23,7 @@ public class AuthController {
     }
 
     @PostMapping("/send-otp")
-    private String sendOtp(@RequestParam("email") String email){
+    private String sendOtp(@RequestParam("email")@Email String email){
         return authService.sendOtp(email);
     }
 
@@ -33,11 +32,11 @@ public class AuthController {
         return authService.verifyOtpAndLogin(email, otp);
     }
 
-    @PostMapping("/reg")
+    @PostMapping("/update-traveller")
     private String register(@RequestBody TravellerDto travellerDto){
         List<Error> errorList = doObjectValidation(travellerDto);
         if(errorList.isEmpty())
-            return authService.registerTravellerIfNotExist(travellerDto);
+            return authService.updateTraveller(travellerDto);
         else throw new CustomException(ErrorTypes.INVALID_DATA,errorList);
     }
 }

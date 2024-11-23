@@ -10,7 +10,6 @@ import com.hodos.hermes.dto.dtos.TravellerDto;
 import com.hodos.hermes.exceptions.CustomException;
 import com.hodos.hermes.exceptions.ErrorTypes;
 import com.hodos.hermes.service.AuthService;
-import io.micrometer.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,8 +18,9 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-import static com.hodos.hermes.utils.GeneralUtils.IsBlankStrings;
+import static com.hodos.hermes.utils.GeneralUtils.isBlankStrings;
 import static com.hodos.hermes.utils.Generate.GenerateOtp;
+import static com.hodos.hermes.utils.ValidationUtil.validateEmail;
 
 @Service
 @Slf4j
@@ -47,10 +47,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public String sendOtp(String emailId) {
         try {
-            if (StringUtils.isBlank(emailId)) {
-                throw new CustomException(ErrorTypes.REQUIRED, "Email address required");
-            }
-
+            validateEmail(emailId);
             Optional<OTPDao> existingOtp = otpScrolls.findByEmail(emailId);
             if (existingOtp.isPresent()) {
                 OTPDao otpDao = existingOtp.get();
@@ -77,8 +74,9 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public LoginResponse verifyOtpAndLogin(String emailId, String otp) {
         try {
-            if (IsBlankStrings(emailId, otp)) {
-                throw new CustomException(ErrorTypes.REQUIRED, "Invalid request");
+            validateEmail(emailId);
+            if (isBlankStrings(otp)) {
+                throw new CustomException(ErrorTypes.REQUIRED, "Otp Required");
             }
 
             Optional<OTPDao> otpDaoOptional = otpScrolls.findByEmail(emailId);
@@ -97,22 +95,25 @@ public class AuthServiceImpl implements AuthService {
 
             Optional<Traveller> optionalTraveller = travellerScrolls.findByEmail(emailId);
             if (optionalTraveller.isEmpty()) {
+                Traveller traveller = new Traveller();
+                traveller.setEmail(emailId);
+                Traveller savedTraveller = travellerScrolls.save(traveller);
+                emailService.sendSimpleEmail(savedTraveller.getEmail(),"Welcome","Welcome to the app Myre");
+
                 return LoginResponse.builder()
                         .isOtpVerified(true)
                         .isTravellerExist(false)
-                        .travellerDto(null)
+                        .travellerDto(getTravellerDto(traveller))
                         .build();
             }
 
             Traveller traveller = optionalTraveller.get();
-            TravellerDto travellerDto = objectMapper.convertValue(traveller, TravellerDto.class);
-
             otpScrolls.delete(otpDao);
 
             return LoginResponse.builder()
                     .isOtpVerified(true)
                     .isTravellerExist(true)
-                    .travellerDto(travellerDto)
+                    .travellerDto(getTravellerDto(traveller))
                     .build();
 
         } catch (CustomException ce) {
@@ -124,14 +125,16 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public String registerTravellerIfNotExist(TravellerDto travellerDto) {
+    public String updateTraveller(TravellerDto travellerDto) {
         try {
             String email = travellerDto.getEmail();
             Optional<Traveller> optionalTraveller = travellerScrolls.findByEmail(email);
-            if (optionalTraveller.isPresent()) {
-                throw new CustomException(ErrorTypes.ALREADY_EXISTING, "User exist");
+            if (optionalTraveller.isEmpty()) {
+                throw new CustomException(ErrorTypes.NOT_FOUND,String.format("Account Not fount -> %s",email));
             }
-            Traveller traveller = objectMapper.convertValue(travellerDto, Traveller.class);
+            long pk = optionalTraveller.get().getId();
+            Traveller traveller = getTraveller(travellerDto);
+            traveller.setId(pk);
             travellerScrolls.save(traveller);
             return "Saved successfully";
         } catch (CustomException ce) {
@@ -141,6 +144,14 @@ public class AuthServiceImpl implements AuthService {
             throw new CustomException(ErrorTypes.ERROR);
         }
 
+    }
+
+    // ----private helper methods-----
+    private TravellerDto getTravellerDto(Traveller traveller){
+        return objectMapper.convertValue(traveller, TravellerDto.class);
+    }
+    private Traveller getTraveller(TravellerDto travellerDto){
+        return objectMapper.convertValue(travellerDto, Traveller.class);
     }
 
     private OTPDao createOtp(String emailId) {

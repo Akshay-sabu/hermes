@@ -20,10 +20,17 @@ public class EmailService {
     // Send simple email
     public void sendSimpleEmail(String to, String subject, String body) {
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(to);
-            message.setSubject(subject);
-            message.setText(body);
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+
+            helper.setTo(to);
+            helper.setSubject("[Do Not Reply] " + subject);
+            helper.setText(body + "\n\nThis is an automated message. Please do not reply to this email.");
+
+            // Add headers to prevent replies
+            message.setHeader("X-Auto-Response-Suppress", "OOF, DR, RN, NRN, AutoReply");
+            message.setHeader("Precedence", "bulk");
+            message.setHeader("Auto-Submitted", "auto-generated");
 
             mailSender.send(message);
             log.info("Mail sent successfully to: {}", to);
@@ -40,8 +47,13 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(htmlBody, true); // true indicates HTML
+            helper.setSubject("[Do Not Reply] " + subject);
+            helper.setText(htmlBody + "<br><br><i>This is an automated message. Please do not reply to this email.</i>", true);
+
+            // Add headers to prevent replies
+            message.setHeader("X-Auto-Response-Suppress", "OOF, DR, RN, NRN, AutoReply");
+            message.setHeader("Precedence", "bulk");
+            message.setHeader("Auto-Submitted", "auto-generated");
 
             mailSender.send(message);
             log.info("HTML mail sent successfully to: {}", to);
@@ -59,12 +71,17 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true);
 
             helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(body);
+            helper.setSubject("[Do Not Reply] " + subject);
+            helper.setText(body + "\n\nThis is an automated message. Please do not reply to this email.");
 
             // Add attachment
             ByteArrayResource resource = new ByteArrayResource(attachmentData);
             helper.addAttachment(attachmentName, resource);
+
+            // Add headers to prevent replies
+            message.setHeader("X-Auto-Response-Suppress", "OOF, DR, RN, NRN, AutoReply");
+            message.setHeader("Precedence", "bulk");
+            message.setHeader("Auto-Submitted", "auto-generated");
 
             mailSender.send(message);
             log.info("Mail with attachment sent successfully to: {}", to);

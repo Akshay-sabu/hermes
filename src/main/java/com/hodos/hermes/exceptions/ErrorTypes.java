@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus;
 @Getter
 public enum ErrorTypes {
     ALREADY_EXISTING("Already existing", 1000, HttpStatus.CONFLICT),
-    INVALID_DATA("Invalid data provided", 1001, HttpStatus.BAD_REQUEST),
+    INVALID_DATA("Invalid data", 1001, HttpStatus.BAD_REQUEST),
     EXPIRED("Expired", 1002, HttpStatus.REQUEST_TIMEOUT),
     REQUIRED("field required",1003,HttpStatus.BAD_REQUEST),
     ERROR("Try again later",1004,HttpStatus.INTERNAL_SERVER_ERROR),

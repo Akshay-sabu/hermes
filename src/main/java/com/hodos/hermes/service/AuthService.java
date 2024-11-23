@@ -7,5 +7,5 @@ public interface AuthService {
     String sendOtp(String emailId);
     LoginResponse verifyOtpAndLogin(String emailId, String otp);
 
-    String registerTravellerIfNotExist(TravellerDto travellerDto);
+    String updateTraveller(TravellerDto travellerDto);
 }
