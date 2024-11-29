@@ -1,33 +1,36 @@
-package com.hodos.hermes.dao;
+package com.hodos.hermes.dao.blog;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import java.util.List;
+
+import java.util.Set;
 
 @Data
 @Entity
 @Table(name = "location")
 public class Location {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
+    private Long id;
 
-    @Column(name = "name")
+    @Column(nullable = false)
     private String name;
 
-    @Column(name = "longitude")
+    private String description;
+
+    @Column(nullable = false)
     private double longitude;
 
-    @Column(name = "latitude")
+    @Column(nullable = false)
     private double latitude;
 
-    @Column(name = "no_of_tags")
-    private int noOfTags;
+    private String address;
+    private String city;
+    private String country;
 
-    @Column(name = "overall_rating")
+    private int noOfTags;
     private float overallRating;
 
     @ManyToMany(mappedBy = "locations")
-    private List<Blogs> blogs;
+    private Set<Blog> blogs;
 }

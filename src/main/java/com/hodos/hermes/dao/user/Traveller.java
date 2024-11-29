@@ -1,5 +1,6 @@
-package com.hodos.hermes.dao;
+package com.hodos.hermes.dao.user;
 
+import com.hodos.hermes.dao.blog.Blog;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -23,7 +24,7 @@ public class Traveller {
     private String email;
 
     @OneToMany(mappedBy = "traveller")
-    private List<Blogs> blogsList;
+    private List<Blog> blogList;
 
     @ManyToMany
     @JoinTable(

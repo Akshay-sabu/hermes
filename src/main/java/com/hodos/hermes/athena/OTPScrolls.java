@@ -1,6 +1,6 @@
 package com.hodos.hermes.athena;
 
-import com.hodos.hermes.dao.OTPDao;
+import com.hodos.hermes.dao.user.OTPDao;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

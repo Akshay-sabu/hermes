@@ -1,4 +1,4 @@
-package com.hodos.hermes.dao;
+package com.hodos.hermes.dao.user;
 import jakarta.persistence.*;
 import lombok.*;
 

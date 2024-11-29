@@ -1,5 +1,5 @@
 package com.hodos.hermes.dto.dtos;
-import com.hodos.hermes.dao.Interests;
+import com.hodos.hermes.dao.user.Interests;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;

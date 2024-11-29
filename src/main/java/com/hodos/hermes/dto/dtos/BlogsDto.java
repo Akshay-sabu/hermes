@@ -1,5 +1,5 @@
 package com.hodos.hermes.dto.dtos;
-import com.hodos.hermes.dao.Traveller;
+import com.hodos.hermes.dao.user.Traveller;
 import lombok.Data;
 
 import java.util.List;
