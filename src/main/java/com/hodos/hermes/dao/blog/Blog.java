@@ -1,9 +1,11 @@
 package com.hodos.hermes.dao.blog;
 
-import com.hodos.hermes.dao.user.Traveller;
+import com.hodos.hermes.dao.user.User;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -11,13 +13,14 @@ import java.util.Set;
 @Entity
 @Table(name = "blogs")
 public class Blog {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long blogId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "traveller_id", nullable = false)
-    private Traveller traveller;
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Column(nullable = false)
     private String blogTitle;
@@ -28,17 +31,22 @@ public class Blog {
     @Column(columnDefinition = "TEXT")
     private String blogContent;
 
-    @OneToMany(mappedBy = "blog", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(
+            mappedBy = "blog",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
     @OrderBy("orderIndex ASC")
-    private List<Section> sections;
+    private List<Section> sections = new ArrayList<>();
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-            name = "blog_location",
+            name = "blog_locations", // Changed to plural
             joinColumns = @JoinColumn(name = "blog_id"),
             inverseJoinColumns = @JoinColumn(name = "location_id")
     )
-    private Set<Location> locations;
+    private Set<Location> locations = new HashSet<>();
 
     @ManyToMany
     @JoinTable(
@@ -63,8 +71,13 @@ public class Blog {
     private int viewCount = 0;
     private int likeCount = 0;
 
-    @OneToMany(mappedBy = "blog", cascade = CascadeType.ALL)
-    private List<Comment> comments;
+    @OneToMany(
+            mappedBy = "blog",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
+    private List<Comment> comments = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

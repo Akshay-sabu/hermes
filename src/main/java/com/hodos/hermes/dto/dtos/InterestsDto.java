@@ -7,5 +7,5 @@ import java.util.List;
 public class InterestsDto {
     private long id;
     private String interestName;
-    private List<TravellerDto> travellers;
+    private List<UserDto> travellers;
 }

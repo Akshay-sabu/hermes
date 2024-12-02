@@ -17,5 +17,5 @@ public class Interests {
     private String interestName;
 
     @ManyToMany(mappedBy = "interests")
-    private List<Traveller> travellers;
+    private List<User> users;
 }

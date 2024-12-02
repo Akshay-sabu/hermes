@@ -9,8 +9,9 @@ public enum ErrorTypes {
     INVALID_DATA("Invalid data", 1001, HttpStatus.BAD_REQUEST),
     EXPIRED("Expired", 1002, HttpStatus.REQUEST_TIMEOUT),
     REQUIRED("field required",1003,HttpStatus.BAD_REQUEST),
-    ERROR("Try again later",1004,HttpStatus.INTERNAL_SERVER_ERROR),
-    NOT_FOUND("Not found",1005,HttpStatus.NOT_FOUND);
+    INTERNAL_SERVER_ERROR("An Unexpected error occurred",1004,HttpStatus.INTERNAL_SERVER_ERROR),
+    NOT_FOUND("Not found",1005,HttpStatus.NOT_FOUND),
+    UN_AUTHORIZED("Unauthorized",1006,HttpStatus.UNAUTHORIZED);
 
 
     private final String message;

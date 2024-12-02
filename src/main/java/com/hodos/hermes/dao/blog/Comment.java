@@ -1,6 +1,6 @@
 package com.hodos.hermes.dao.blog;
 
-import com.hodos.hermes.dao.user.Traveller;
+import com.hodos.hermes.dao.user.User;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -20,7 +20,7 @@ public class Comment {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private Traveller user;
+    private User user;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;

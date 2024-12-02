@@ -6,9 +6,9 @@ import lombok.Data;
 
 import java.util.List;
 @Data
-public class TravellerDto {
+public class UserDto {
     private long id;
-    private String travellerId;
+    private String userId;
 
     @NotNull(message = "name required")
     private String name;

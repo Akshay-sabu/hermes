@@ -2,46 +2,54 @@ package com.hodos.hermes.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hodos.hermes.athena.OTPScrolls;
-import com.hodos.hermes.athena.TravellerScrolls;
+import com.hodos.hermes.athena.RoleScrolls;
+import com.hodos.hermes.athena.UserScrolls;
 import com.hodos.hermes.dao.user.OTPDao;
-import com.hodos.hermes.dao.user.Traveller;
+import com.hodos.hermes.dao.user.Role;
+import com.hodos.hermes.dao.user.User;
 import com.hodos.hermes.dto.responses.LoginResponse;
-import com.hodos.hermes.dto.dtos.TravellerDto;
 import com.hodos.hermes.exceptions.CustomException;
 import com.hodos.hermes.exceptions.ErrorTypes;
 import com.hodos.hermes.service.AuthService;
+import com.hodos.hermes.service.JWTService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Optional;
 
 import static com.hodos.hermes.utils.GeneralUtils.isBlankStrings;
 import static com.hodos.hermes.utils.Generate.GenerateOtp;
 import static com.hodos.hermes.utils.ValidationUtil.validateEmail;
+import static com.hodos.hermes.utils.mapper.UserMapper.getUserDto;
 
 @Service
 @Slf4j
 public class AuthServiceImpl implements AuthService {
-    private final TravellerScrolls travellerScrolls;
+    private final UserScrolls userScrolls;
     private final OTPScrolls otpScrolls;
     private final EmailService emailService;
-    private final ObjectMapper objectMapper;
+    private final JWTService jwtService;
+    private final RoleScrolls roleScrolls;
+
 
     @Value("${otp.expiration.time}")
     private Integer OTP_EXPIRATION_TIME;
 
     @Autowired
-    public AuthServiceImpl(TravellerScrolls travellerScrolls,
+    public AuthServiceImpl(UserScrolls userScrolls,
                            OTPScrolls otpScrolls,
                            EmailService emailService,
-                           ObjectMapper objectMapper) {
-        this.travellerScrolls = travellerScrolls;
+                           ObjectMapper objectMapper, JWTService jwtService, RoleScrolls roleScrolls) {
+        this.userScrolls = userScrolls;
         this.otpScrolls = otpScrolls;
         this.emailService = emailService;
-        this.objectMapper = objectMapper;
+        this.jwtService = jwtService;
+        this.roleScrolls = roleScrolls;
     }
 
     @Override
@@ -67,7 +75,7 @@ public class AuthServiceImpl implements AuthService {
             throw new CustomException(ce.getErrorTypes(), ce.getMessage());
         } catch (Exception e) {
             log.error("Error occurred while sending OTP: ", e);
-            throw new CustomException(ErrorTypes.ERROR, "Something went wrong");
+            throw new CustomException(ErrorTypes.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -93,65 +101,52 @@ public class AuthServiceImpl implements AuthService {
                 throw new CustomException(ErrorTypes.EXPIRED, "OTP has expired");
             }
 
-            Optional<Traveller> optionalTraveller = travellerScrolls.findByEmail(emailId);
+            Optional<User> optionalTraveller = userScrolls.findByEmail(emailId);
             if (optionalTraveller.isEmpty()) {
-                Traveller traveller = new Traveller();
-                traveller.setEmail(emailId);
-                Traveller savedTraveller = travellerScrolls.save(traveller);
-                emailService.sendSimpleEmail(savedTraveller.getEmail(),"Welcome","Welcome to the app Myre");
+                User user = new User();
+                user.setEmail(emailId);
+                user.setRoles(List.of(getRole()));
+                User savedUser = userScrolls.save(user);
+                emailService.sendSimpleEmail(savedUser.getEmail(),"Welcome","Welcome to the app Myre");
 
                 return LoginResponse.builder()
                         .isOtpVerified(true)
                         .isTravellerExist(false)
-                        .travellerDto(getTravellerDto(traveller))
+                        //.userDto(getUserDto(user))
                         .build();
             }
 
-            Traveller traveller = optionalTraveller.get();
+            User user = optionalTraveller.get();
             otpScrolls.delete(otpDao);
+
+            String token = jwtService.generateToken(user);
+
+            String refreshToken = jwtService.generateRefreshToken(new HashMap<>(),user);
 
             return LoginResponse.builder()
                     .isOtpVerified(true)
                     .isTravellerExist(true)
-                    .travellerDto(getTravellerDto(traveller))
+                    .token(token)
+                    .refreshToken(refreshToken)
+                    //.userDto(getUserDto(user))
                     .build();
 
         } catch (CustomException ce) {
             throw new CustomException(ce.getErrorTypes(), ce.getMessage());
         } catch (Exception e) {
             log.error("Error occurred while verifying OTP and logging in: ", e);
-            throw new CustomException(ErrorTypes.ERROR, "Something went wrong");
+            throw new CustomException(ErrorTypes.INTERNAL_SERVER_ERROR);
         }
     }
-
-    @Override
-    public String updateTraveller(TravellerDto travellerDto) {
-        try {
-            String email = travellerDto.getEmail();
-            Optional<Traveller> optionalTraveller = travellerScrolls.findByEmail(email);
-            if (optionalTraveller.isEmpty()) {
-                throw new CustomException(ErrorTypes.NOT_FOUND,String.format("Account Not fount -> %s",email));
-            }
-            long pk = optionalTraveller.get().getId();
-            Traveller traveller = getTraveller(travellerDto);
-            traveller.setId(pk);
-            travellerScrolls.save(traveller);
-            return "Saved successfully";
-        } catch (CustomException ce) {
-            throw new CustomException(ce.getErrorTypes(), ce.getMessage());
-        } catch (Exception e) {
-            log.error("Error - > ", e);
-            throw new CustomException(ErrorTypes.ERROR);
+    private Role getRole(){
+        String USER = "USER";
+        Optional<Role> roleOptional = roleScrolls.findByName(USER);
+        if(roleOptional.isPresent()){
+            return roleOptional.get();
         }
-
-    }
-
-    // ----private helper methods-----
-    private TravellerDto getTravellerDto(Traveller traveller){
-        return objectMapper.convertValue(traveller, TravellerDto.class);
-    }
-    private Traveller getTraveller(TravellerDto travellerDto){
-        return objectMapper.convertValue(travellerDto, Traveller.class);
+        Role role = new Role();
+        role.setName(USER);
+        return roleScrolls.save(role);
     }
 
     private OTPDao createOtp(String emailId) {

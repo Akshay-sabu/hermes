@@ -1,6 +1,6 @@
 package com.hodos.hermes.controller;
 
-import com.hodos.hermes.dto.dtos.TravellerDto;
+import com.hodos.hermes.dto.dtos.UserDto;
 import com.hodos.hermes.dto.responses.LoginResponse;
 import com.hodos.hermes.exceptions.CustomException;
 import com.hodos.hermes.exceptions.Error;
@@ -14,7 +14,7 @@ import java.util.List;
 import static com.hodos.hermes.utils.ValidationUtil.doObjectValidation;
 
 @RestController
-@RequestMapping("api/v1")
+@RequestMapping("api/v1/auth")
 public class AuthController {
     private final AuthService authService;
 
@@ -30,13 +30,5 @@ public class AuthController {
     @PostMapping("/verify-otp")
     private LoginResponse verifyOtpAndLogin(@RequestParam("email") @Email String email, @RequestParam("otp")String otp){
         return authService.verifyOtpAndLogin(email, otp);
-    }
-
-    @PostMapping("/update-traveller")
-    private String register(@RequestBody TravellerDto travellerDto){
-        List<Error> errorList = doObjectValidation(travellerDto);
-        if(errorList.isEmpty())
-            return authService.updateTraveller(travellerDto);
-        else throw new CustomException(ErrorTypes.INVALID_DATA,errorList);
     }
 }

@@ -1,6 +1,6 @@
 package com.hodos.hermes.dto.responses;
 
-import com.hodos.hermes.dto.dtos.TravellerDto;
+import com.hodos.hermes.dto.dtos.UserDto;
 import lombok.Builder;
 import lombok.Data;
 
@@ -9,5 +9,7 @@ import lombok.Data;
 public class LoginResponse {
     private boolean isOtpVerified;
     private boolean isTravellerExist;
-    private TravellerDto travellerDto;
+    private String token;
+    private String refreshToken;
+    private UserDto userDto;
 }

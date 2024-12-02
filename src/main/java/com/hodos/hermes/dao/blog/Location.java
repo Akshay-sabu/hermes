@@ -3,6 +3,7 @@ package com.hodos.hermes.dao.blog;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.util.HashSet;
 import java.util.Set;
 
 @Data
@@ -11,7 +12,7 @@ import java.util.Set;
 public class Location {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long locationId;
 
     @Column(nullable = false)
     private String name;
@@ -31,6 +32,9 @@ public class Location {
     private int noOfTags;
     private float overallRating;
 
-    @ManyToMany(mappedBy = "locations")
-    private Set<Blog> blogs;
+    @ManyToMany(
+            mappedBy = "locations",
+            fetch = FetchType.LAZY
+    )
+    private Set<Blog> blogs = new HashSet<>();
 }

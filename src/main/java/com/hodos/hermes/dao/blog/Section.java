@@ -3,6 +3,7 @@ package com.hodos.hermes.dao.blog;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -26,6 +27,11 @@ public class Section {
     @Column(columnDefinition = "TEXT")
     private String sectionContent;
 
-    @OneToMany(mappedBy = "section", cascade = CascadeType.ALL)
-    private List<Media> media;
+    @OneToMany(
+            mappedBy = "section",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
+    private List<Media> media = new ArrayList<>();
 }
