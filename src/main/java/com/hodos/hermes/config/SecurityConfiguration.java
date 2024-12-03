@@ -26,17 +26,25 @@ public class SecurityConfiguration {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(request-> request.requestMatchers("/api/v1/auth/send-otp",
-                                "/api/v1/auth/verify-otp",
-                                "/api/v1/auth/**" )
+                // Allow unrestricted access to the following endpoints
+                .authorizeHttpRequests(request -> request.requestMatchers("/api/v1/auth/send-otp",
+                                "/api/v1/auth/verify-otp", "/api/v1/auth/request-token",
+                                "/api/v1/auth/**")
                         .permitAll())
-                .authorizeHttpRequests(request->request.requestMatchers("/api/v1/admin")
-                        .hasAnyAuthority("ROLE_ADMIN")
-                        .anyRequest().authenticated())
-                .sessionManagement(manager->manager.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // Restrict access to /api/v1/admin to users with the ROLE_ADMIN authority
+                .authorizeHttpRequests(request -> request.requestMatchers("/api/v1/admin")
+                        .hasAnyAuthority("ROLE_ADMIN"))
+                // Restrict access to /api/v1/user/** to users with the ROLE_USER authority
+                .authorizeHttpRequests(request -> request.requestMatchers("/api/v1/user/u")
+                        .hasAnyAuthority("ROLE_USER"))
+                // Apply the authentication to any other reque st (i.e., default rule)
+                .authorizeHttpRequests(request -> request.anyRequest().authenticated())
+                .sessionManagement(manager -> manager.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
+
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {

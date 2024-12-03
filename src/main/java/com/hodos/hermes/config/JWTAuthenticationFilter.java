@@ -1,9 +1,11 @@
 package com.hodos.hermes.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hodos.hermes.dto.responses.ErrorResponse;
 import com.hodos.hermes.service.JWTService;
 import com.hodos.hermes.service.UserService;
 import com.hodos.hermes.exceptions.CustomException;
-import com.hodos.hermes.exceptions.ErrorTypes;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.micrometer.common.util.StringUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -42,8 +44,7 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
             }
 
             if (StringUtils.isBlank(authHeader) || !authHeader.startsWith("Bearer ")) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.getWriter().write("Missing or invalid Authorization header");
+                handleError(response, HttpServletResponse.SC_UNAUTHORIZED, "Missing or invalid Authorization header");
                 return;
             }
 
@@ -51,40 +52,65 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
             final String userEmail = jwtService.extractUserName(jwt);
 
             if (StringUtils.isEmpty(userEmail)) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.getWriter().write("Invalid JWT token");
+                handleError(response, HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT token");
                 return;
             }
 
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = userService.userDetailsService()
-                        .loadUserByUsername(userEmail);
+                try {
+                    UserDetails userDetails = userService.userDetailsService()
+                            .loadUserByUsername(userEmail);
 
-                if (jwtService.isTokenValid(jwt, userDetails)) {
-                    SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
+                    if (jwtService.isTokenValid(jwt, userDetails)) {
+                        SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
+                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                        );
 
-                    // Create authentication token without credentials since we're using OTP
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null, // No credentials needed for OTP-based auth
-                            userDetails.getAuthorities()
-                    );
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        securityContext.setAuthentication(authToken);
+                        SecurityContextHolder.setContext(securityContext);
 
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    securityContext.setAuthentication(authToken);
-                    SecurityContextHolder.setContext(securityContext);
-                } else {
-                    throw new CustomException(ErrorTypes.UN_AUTHORIZED,"Invalid or expired token");
+                        filterChain.doFilter(request, response);
+                    } else {
+                        handleError(response, HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired token");
+                    }
+                } catch (CustomException ce) {
+                    handleCustomError(response, ce);
                 }
             }
-
-            filterChain.doFilter(request, response);
-        } catch (CustomException ce) {
-            log.error("JWT Authentication error: {}", ce.getMessage());
-            throw ce;
-        } catch (Exception e) {
-            log.error("Unexpected error in JWT Authentication filter", e);
-            throw new CustomException(ErrorTypes.INTERNAL_SERVER_ERROR);
+        } catch (ExpiredJwtException ee){
+            log.error("Token expired");
+            handleError(response, HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired token");
         }
+        catch (Exception e) {
+            log.error("Unexpected error in JWT Authentication filter", e);
+            handleError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal server error");
+        }
+    }
+
+    private void handleError(HttpServletResponse response, int status, String message) throws IOException {
+        response.setStatus(status);
+        response.setContentType("application/json");
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .msg(message)
+                .internalStatusCode(status)
+                .cause(message)
+                .build();
+        response.getWriter().write(new ObjectMapper().writeValueAsString(errorResponse));
+    }
+
+    private void handleCustomError(HttpServletResponse response, CustomException ce) throws IOException {
+        response.setStatus(ce.getErrorTypes().getHttpStatus().value());
+        response.setContentType("application/json");
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .msg(ce.getErrorTypes().getMessage())
+                .internalStatusCode(ce.getErrorTypes().getInternalStatusCode())
+                .cause(ce.getMessage())
+                .errorList(ce.getErrors())
+                .build();
+        response.getWriter().write(new ObjectMapper().writeValueAsString(errorResponse));
     }
 }

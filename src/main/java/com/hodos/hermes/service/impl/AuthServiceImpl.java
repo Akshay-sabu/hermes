@@ -1,20 +1,24 @@
 package com.hodos.hermes.service.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hodos.hermes.athena.OTPScrolls;
 import com.hodos.hermes.athena.RoleScrolls;
 import com.hodos.hermes.athena.UserScrolls;
 import com.hodos.hermes.dao.user.OTPDao;
 import com.hodos.hermes.dao.user.Role;
 import com.hodos.hermes.dao.user.User;
+import com.hodos.hermes.dto.requests.NewJWTRequest;
 import com.hodos.hermes.dto.responses.LoginResponse;
+import com.hodos.hermes.dto.responses.NewJWTResponse;
 import com.hodos.hermes.exceptions.CustomException;
 import com.hodos.hermes.exceptions.ErrorTypes;
 import com.hodos.hermes.service.AuthService;
 import com.hodos.hermes.service.JWTService;
+import com.hodos.hermes.service.UserService;
+import io.micrometer.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -35,6 +39,7 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final JWTService jwtService;
     private final RoleScrolls roleScrolls;
+    private final UserService userService;
 
 
     @Value("${otp.expiration.time}")
@@ -43,13 +48,13 @@ public class AuthServiceImpl implements AuthService {
     @Autowired
     public AuthServiceImpl(UserScrolls userScrolls,
                            OTPScrolls otpScrolls,
-                           EmailService emailService,
-                           ObjectMapper objectMapper, JWTService jwtService, RoleScrolls roleScrolls) {
+                           EmailService emailService, JWTService jwtService, RoleScrolls roleScrolls, UserService userService) {
         this.userScrolls = userScrolls;
         this.otpScrolls = otpScrolls;
         this.emailService = emailService;
         this.jwtService = jwtService;
         this.roleScrolls = roleScrolls;
+        this.userService = userService;
     }
 
     @Override
@@ -81,67 +86,107 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginResponse verifyOtpAndLogin(String emailId, String otp) {
-        try {
-            validateEmail(emailId);
-            if (isBlankStrings(otp)) {
-                throw new CustomException(ErrorTypes.REQUIRED, "Otp Required");
-            }
+        validateInputs(emailId, otp);
 
-            Optional<OTPDao> otpDaoOptional = otpScrolls.findByEmail(emailId);
-            if (otpDaoOptional.isEmpty()) {
-                throw new CustomException(ErrorTypes.NOT_FOUND, "OTP not found");
-            }
+        OTPDao otpDao = validateAndGetOtp(emailId, otp);
+        User user = getOrCreateUser(emailId);
 
-            OTPDao otpDao = otpDaoOptional.get();
-            if (!otpDao.getOtp().equals(otp)) {
-                throw new CustomException(ErrorTypes.INVALID_DATA, "Invalid OTP");
-            }
+        otpScrolls.delete(otpDao);
 
-            if (otpDao.getExpiryTime().isBefore(LocalDateTime.now())) {
-                throw new CustomException(ErrorTypes.EXPIRED, "OTP has expired");
-            }
+        String token = jwtService.generateToken(user);
+        String refreshToken = jwtService.generateRefreshToken(new HashMap<>(), user);
 
-            Optional<User> optionalTraveller = userScrolls.findByEmail(emailId);
-            if (optionalTraveller.isEmpty()) {
-                User user = new User();
-                user.setEmail(emailId);
-                user.setRoles(List.of(getRole()));
-                User savedUser = userScrolls.save(user);
-                emailService.sendSimpleEmail(savedUser.getEmail(),"Welcome","Welcome to the app Myre");
+        return buildLoginResponse(user, token, refreshToken);
+    }
 
-                return LoginResponse.builder()
-                        .isOtpVerified(true)
-                        .isTravellerExist(false)
-                        //.userDto(getUserDto(user))
-                        .build();
-            }
-
-            User user = optionalTraveller.get();
-            otpScrolls.delete(otpDao);
-
-            String token = jwtService.generateToken(user);
-
-            String refreshToken = jwtService.generateRefreshToken(new HashMap<>(),user);
-
-            return LoginResponse.builder()
-                    .isOtpVerified(true)
-                    .isTravellerExist(true)
-                    .token(token)
-                    .refreshToken(refreshToken)
-                    //.userDto(getUserDto(user))
-                    .build();
-
-        } catch (CustomException ce) {
-            throw new CustomException(ce.getErrorTypes(), ce.getMessage());
-        } catch (Exception e) {
-            log.error("Error occurred while verifying OTP and logging in: ", e);
-            throw new CustomException(ErrorTypes.INTERNAL_SERVER_ERROR);
+    private void validateInputs(String emailId, String otp) {
+        validateEmail(emailId);
+        if (isBlankStrings(otp)) {
+            throw new CustomException(ErrorTypes.REQUIRED, "OTP Required");
         }
     }
-    private Role getRole(){
+
+    private OTPDao validateAndGetOtp(String emailId, String otp) {
+        OTPDao otpDao = otpScrolls.findByEmail(emailId)
+                .orElseThrow(() -> new CustomException(ErrorTypes.NOT_FOUND, "OTP not found"));
+
+        if (!otpDao.getOtp().equals(otp)) {
+            throw new CustomException(ErrorTypes.INVALID_DATA, "Invalid OTP");
+        }
+
+        if (otpDao.getExpiryTime().isBefore(LocalDateTime.now())) {
+            throw new CustomException(ErrorTypes.EXPIRED, "OTP has expired");
+        }
+
+        return otpDao;
+    }
+
+    private User getOrCreateUser(String emailId) {
+        return userScrolls.findByEmail(emailId)
+                .orElseGet(() -> createNewUser(emailId));
+    }
+
+    private User createNewUser(String emailId) {
+        User user = new User();
+        user.setEmail(emailId);
+        user.setRoles(List.of(getRole()));
+
+        User savedUser = userScrolls.save(user);
+        sendWelcomeEmail(savedUser);
+
+        return savedUser;
+    }
+
+    private void sendWelcomeEmail(User user) {
+        try {
+            emailService.sendSimpleEmail(user.getEmail(), "Welcome", "Welcome to the app Myre");
+        } catch (Exception e) {
+            log.warn("Failed to send welcome email to {}: {}", user.getEmail(), e.getMessage());
+        }
+    }
+
+    private LoginResponse buildLoginResponse(User user, String token, String refreshToken) {
+        return LoginResponse.builder()
+                .isOtpVerified(true)
+                .isTravellerExist(userScrolls.existsByEmail(user.getEmail()))
+                .token(token)
+                .refreshToken(refreshToken)
+                .userDto(getUserDto(user))
+                .build();
+    }
+
+    @Override
+    public NewJWTResponse getNewJwtToken(NewJWTRequest jwtRequest) {
+        try {
+            String refreshToken = jwtRequest.getRefreshToken();
+            if (StringUtils.isBlank(refreshToken) || !refreshToken.startsWith("Bearer ")) {
+                throw new CustomException(ErrorTypes.REQUIRED, "Invalid or empty refresh token");
+            }
+            String rt = refreshToken.substring(7);
+            String userEmail = jwtService.extractUserName(rt);
+            User user = userScrolls.findByEmail(userEmail).orElseThrow(() ->
+                    new CustomException(ErrorTypes.NOT_FOUND, "User not found"));
+
+            UserDetails userDetails = userService.userDetailsService().loadUserByUsername(userEmail);
+            if (!jwtService.isTokenValid(rt, userDetails)) {
+                throw new CustomException(ErrorTypes.INVALID_DATA, "Invalid refresh token");
+            }
+            return NewJWTResponse.builder()
+                    .token(jwtService.generateToken(user))
+                    .build();
+        } catch (CustomException ce) {
+            throw ce;
+        } catch (Exception e) {
+//            log.error("Error occurred while refreshing JWT for user: {}. Message: {}", jwtRequest.getUserEmail(), e.getMessage(), e);
+            throw new CustomException(ErrorTypes.INTERNAL_SERVER_ERROR, "An error occurred while generating the JWT token");
+        }
+    }
+
+
+    private Role getRole() {
         String USER = "USER";
         Optional<Role> roleOptional = roleScrolls.findByName(USER);
-        if(roleOptional.isPresent()){
+        if (roleOptional.isPresent()) {
             return roleOptional.get();
         }
         Role role = new Role();

@@ -27,7 +27,7 @@ public class JWTServiceImpl implements JWTService {
     public String generateToken(User user){
         return Jwts.builder()
                 .setSubject(user.getEmail())
-                .setClaims(Map.of("roles",user.getRoles(),"user_id",user.getId()))
+//                .setClaims(Map.of("roles",user.getRoles(),"user_id",user.getId()))
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis()+60000*5))
                 .signWith(getSignKey(), SignatureAlgorithm.HS256)
@@ -39,7 +39,7 @@ public class JWTServiceImpl implements JWTService {
     public String generateRefreshToken(HashMap<Object, Object> extraClaims, User user) {
         return Jwts.builder()
                 .setSubject(user.getEmail())
-                .setClaims(Map.of("roles",user.getRoles(),"user_id",user.getId()))
+//                .setClaims(Map.of("roles",user.getRoles(),"user_id",user.getId()))
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis()+604800000))
                 .signWith(getSignKey(), SignatureAlgorithm.HS256)
@@ -67,8 +67,13 @@ public class JWTServiceImpl implements JWTService {
     }
 
     private Claims extractAllClaims(String token) {
-        return Jwts.parserBuilder().setSigningKey(getSignKey()).build().parseClaimsJwt(token).getBody();
+        return Jwts.parserBuilder()
+                .setSigningKey(getSignKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
     }
+
 
     private Key getSignKey() {
         byte[] key = Decoders.BASE64.decode(SIGN_KEY);

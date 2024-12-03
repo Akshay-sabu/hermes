@@ -5,6 +5,8 @@ import com.hodos.hermes.exceptions.CustomException;
 import com.hodos.hermes.exceptions.Error;
 import com.hodos.hermes.exceptions.ErrorTypes;
 import com.hodos.hermes.service.UserService;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,7 +17,7 @@ import java.util.List;
 import static com.hodos.hermes.utils.ValidationUtil.doObjectValidation;
 
 @RestController
-@RequestMapping("/user")
+@RequestMapping("/api/v1/user")
 public class UserController {
     private final UserService userService;
 
@@ -25,6 +27,13 @@ public class UserController {
 
     @PostMapping("/u")
     private String register(@RequestBody UserDto userDto){
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userEmail = authentication != null ? authentication.getName() : null;
+
+        if (userEmail == null) {
+            throw new CustomException(ErrorTypes.UN_AUTHORIZED,"User not authenticated");
+        }
+        System.out.println(userEmail);
         List<Error> errorList = doObjectValidation(userDto);
         if(errorList.isEmpty())
             return userService.updateUser(userDto);

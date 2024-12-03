@@ -2,7 +2,7 @@ package com.hodos.hermes.dao.user;
 
 import com.hodos.hermes.dao.blog.Blog;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -10,15 +10,18 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
-@Table(name="users")
+@Table(name = "users", indexes = {@Index(name = "idx_email", columnList = "email")})
 public class User implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY) // Changed from AUTO to IDENTITY
     private Long id;
 
-    @Column(name = "user_id", unique = true) // Added unique constraint
+    @Column(name = "user_id", unique = true)
     private String userId;
 
     @Column(name = "name")
@@ -38,7 +41,7 @@ public class User implements UserDetails {
     )
     private Set<Interests> interests = new HashSet<>();
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id"),

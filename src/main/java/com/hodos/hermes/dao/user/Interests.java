@@ -1,11 +1,13 @@
 package com.hodos.hermes.dao.user;
 
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Data;
 
 import java.util.List;
 
 @Data
+@Builder
 @Entity
 @Table(name="interests")
 public class Interests {

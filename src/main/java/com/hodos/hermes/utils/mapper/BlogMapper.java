@@ -7,4 +7,7 @@ public class BlogMapper {
     public static Blog convertToBlogDao(BlogDto blogDto){
       return null;
     }
+    public static BlogDto convertToBlogDto(){
+        return null;
+    }
 }

@@ -7,4 +7,7 @@ import java.util.Optional;
 
 public interface UserScrolls extends JpaRepository<User,Long> {
     Optional<User> findByEmail(String email);
+
+    boolean existsByEmail(String email);
+
 }

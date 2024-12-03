@@ -1,7 +1,9 @@
 package com.hodos.hermes.controller;
 
 import com.hodos.hermes.dto.dtos.UserDto;
+import com.hodos.hermes.dto.requests.NewJWTRequest;
 import com.hodos.hermes.dto.responses.LoginResponse;
+import com.hodos.hermes.dto.responses.NewJWTResponse;
 import com.hodos.hermes.exceptions.CustomException;
 import com.hodos.hermes.exceptions.Error;
 import com.hodos.hermes.exceptions.ErrorTypes;
@@ -23,12 +25,17 @@ public class AuthController {
     }
 
     @PostMapping("/send-otp")
-    private String sendOtp(@RequestParam("email")@Email String email){
+    public String sendOtp(@RequestParam("email")@Email String email){
         return authService.sendOtp(email);
     }
 
     @PostMapping("/verify-otp")
-    private LoginResponse verifyOtpAndLogin(@RequestParam("email") @Email String email, @RequestParam("otp")String otp){
+    public LoginResponse verifyOtpAndLogin(@RequestParam("email") @Email String email, @RequestParam("otp")String otp){
         return authService.verifyOtpAndLogin(email, otp);
     }
+    @PostMapping("/request-token")
+    public NewJWTResponse getNewTokenViaRefreshToken(@RequestBody NewJWTRequest jwtRequest){
+        return authService.getNewJwtToken(jwtRequest);
+    }
+
 }

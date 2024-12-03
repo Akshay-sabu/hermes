@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
-import static com.hodos.hermes.utils.mapper.UserMapper.getUser;
+import static com.hodos.hermes.utils.mapper.UserMapper.getUpdatedUser;
 
 @Service
 @Slf4j
@@ -43,9 +43,8 @@ public class UserServiceImpl implements UserService {
             if (optionalTraveller.isEmpty()) {
                 throw new CustomException(ErrorTypes.NOT_FOUND,String.format("Account Not fount -> %s",email));
             }
-            long pk = optionalTraveller.get().getId();
-            User user = getUser(userDto);
-            user.setId(pk);
+            User existingUser = optionalTraveller.get();
+            User user = getUpdatedUser(existingUser,userDto);
             userScrolls.save(user);
             return "Saved successfully";
         } catch (CustomException ce) {
