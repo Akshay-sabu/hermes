@@ -1,6 +1,8 @@
 package com.hodos.hermes.service.impl;
 
+import com.hodos.hermes.athena.RoleScrolls;
 import com.hodos.hermes.athena.UserScrolls;
+import com.hodos.hermes.dao.user.Role;
 import com.hodos.hermes.dao.user.User;
 import com.hodos.hermes.dto.dtos.UserDto;
 import com.hodos.hermes.exceptions.CustomException;
@@ -12,6 +14,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 import static com.hodos.hermes.utils.mapper.UserMapper.getUpdatedUser;
@@ -20,9 +23,11 @@ import static com.hodos.hermes.utils.mapper.UserMapper.getUpdatedUser;
 @Slf4j
 public class UserServiceImpl implements UserService {
     private final UserScrolls userScrolls;
+    private final RoleScrolls roleScrolls;
 
-    public UserServiceImpl(UserScrolls userScrolls) {
+    public UserServiceImpl(UserScrolls userScrolls, RoleScrolls roleScrolls) {
         this.userScrolls = userScrolls;
+        this.roleScrolls = roleScrolls;
     }
 
     @Override
@@ -33,6 +38,19 @@ public class UserServiceImpl implements UserService {
                 return userScrolls.findByEmail(userName).orElseThrow(()-> new CustomException(ErrorTypes.NOT_FOUND,"User not found"));
             }
         };
+    }
+    @Override
+    public User getOrCreateUser(String emailId) {
+        return userScrolls.findByEmail(emailId)
+                .orElseGet(()->this.createNewUser(emailId));
+    }
+
+    private User createNewUser(String emailId) {
+        User user = new User();
+        user.setEmail(emailId);
+        user.setRoles(List.of(getRole()));
+        user.setUserId(emailId.split("@")[0]);
+        return userScrolls.save(user);
     }
 
     @Override
@@ -53,6 +71,16 @@ public class UserServiceImpl implements UserService {
             log.error("Error - > ", e);
             throw new CustomException(ErrorTypes.INTERNAL_SERVER_ERROR);
         }
+    }
 
+    private Role getRole() {
+        String USER = "USER";
+        Optional<Role> roleOptional = roleScrolls.findByName(USER);
+        if (roleOptional.isPresent()) {
+            return roleOptional.get();
+        }
+        Role role = new Role();
+        role.setName(USER);
+        return roleScrolls.save(role);
     }
 }

@@ -7,10 +7,7 @@ import com.hodos.hermes.exceptions.ErrorTypes;
 import com.hodos.hermes.service.UserService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -26,7 +23,7 @@ public class UserController {
     }
 
     @PostMapping("/u")
-    private String register(@RequestBody UserDto userDto){
+    public String register(@RequestBody UserDto userDto){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userEmail = authentication != null ? authentication.getName() : null;
 
@@ -39,4 +36,10 @@ public class UserController {
             return userService.updateUser(userDto);
         else throw new CustomException(ErrorTypes.INVALID_DATA,errorList);
     }
+
+    @GetMapping()
+    public String getUser(@RequestParam("userId")String userId,@RequestParam("email")String email){
+
+    }
+
 }

@@ -8,13 +8,9 @@ import java.util.Set;
 @Data
 @Builder
 public class UserDto {
-    private long id;
-
     private String userId;
-
     @NotNull(message = "name required")
     private String name;
-
     @NotNull(message = "email required")
     @Email(message = "invalid email")
     private String email;

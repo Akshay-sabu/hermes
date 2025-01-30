@@ -58,7 +58,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public String sendOtp(String emailId) {
+    public String sendAuthOtp(String emailId) {
         try {
             validateEmail(emailId);
             Optional<OTPDao> existingOtp = otpScrolls.findByEmail(emailId);
@@ -96,6 +96,8 @@ public class AuthServiceImpl implements AuthService {
         String token = jwtService.generateToken(user);
         String refreshToken = jwtService.generateRefreshToken(new HashMap<>(), user);
 
+        sendWelcomeEmail(user);
+
         return buildLoginResponse(user, token, refreshToken);
     }
 
@@ -123,19 +125,14 @@ public class AuthServiceImpl implements AuthService {
 
     private User getOrCreateUser(String emailId) {
         return userScrolls.findByEmail(emailId)
-                .orElseGet(() -> createNewUser(emailId));
+                .orElseGet(() -> {
+                           User user =  userService.createNewUser(emailId);
+                           sendWelcomeEmail(user);
+                           return user;
+                        }
+                );
     }
 
-    private User createNewUser(String emailId) {
-        User user = new User();
-        user.setEmail(emailId);
-        user.setRoles(List.of(getRole()));
-
-        User savedUser = userScrolls.save(user);
-        sendWelcomeEmail(savedUser);
-
-        return savedUser;
-    }
 
     private void sendWelcomeEmail(User user) {
         try {

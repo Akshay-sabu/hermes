@@ -1,19 +1,11 @@
 package com.hodos.hermes.controller;
 
-import com.hodos.hermes.dto.dtos.UserDto;
 import com.hodos.hermes.dto.requests.NewJWTRequest;
 import com.hodos.hermes.dto.responses.LoginResponse;
 import com.hodos.hermes.dto.responses.NewJWTResponse;
-import com.hodos.hermes.exceptions.CustomException;
-import com.hodos.hermes.exceptions.Error;
-import com.hodos.hermes.exceptions.ErrorTypes;
 import com.hodos.hermes.service.AuthService;
 import jakarta.validation.constraints.Email;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-
-import static com.hodos.hermes.utils.ValidationUtil.doObjectValidation;
 
 @RestController
 @RequestMapping("api/v1/auth")
@@ -26,7 +18,7 @@ public class AuthController {
 
     @PostMapping("/send-otp")
     public String sendOtp(@RequestParam("email")@Email String email){
-        return authService.sendOtp(email);
+        return authService.sendAuthOtp(email);
     }
 
     @PostMapping("/verify-otp")
