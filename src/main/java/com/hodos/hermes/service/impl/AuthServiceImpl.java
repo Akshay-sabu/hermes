@@ -38,7 +38,6 @@ public class AuthServiceImpl implements AuthService {
     private final OTPScrolls otpScrolls;
     private final EmailService emailService;
     private final JWTService jwtService;
-    private final RoleScrolls roleScrolls;
     private final UserService userService;
 
 
@@ -48,12 +47,11 @@ public class AuthServiceImpl implements AuthService {
     @Autowired
     public AuthServiceImpl(UserScrolls userScrolls,
                            OTPScrolls otpScrolls,
-                           EmailService emailService, JWTService jwtService, RoleScrolls roleScrolls, UserService userService) {
+                           EmailService emailService, JWTService jwtService, UserService userService) {
         this.userScrolls = userScrolls;
         this.otpScrolls = otpScrolls;
         this.emailService = emailService;
         this.jwtService = jwtService;
-        this.roleScrolls = roleScrolls;
         this.userService = userService;
     }
 
@@ -89,7 +87,7 @@ public class AuthServiceImpl implements AuthService {
         validateInputs(emailId, otp);
 
         OTPDao otpDao = validateAndGetOtp(emailId, otp);
-        User user = getOrCreateUser(emailId);
+        User user = userService.getOrCreateUser(emailId);
 
         otpScrolls.delete(otpDao);
 
@@ -122,17 +120,6 @@ public class AuthServiceImpl implements AuthService {
 
         return otpDao;
     }
-
-    private User getOrCreateUser(String emailId) {
-        return userScrolls.findByEmail(emailId)
-                .orElseGet(() -> {
-                           User user =  userService.createNewUser(emailId);
-                           sendWelcomeEmail(user);
-                           return user;
-                        }
-                );
-    }
-
 
     private void sendWelcomeEmail(User user) {
         try {
@@ -177,18 +164,6 @@ public class AuthServiceImpl implements AuthService {
 //            log.error("Error occurred while refreshing JWT for user: {}. Message: {}", jwtRequest.getUserEmail(), e.getMessage(), e);
             throw new CustomException(ErrorTypes.INTERNAL_SERVER_ERROR, "An error occurred while generating the JWT token");
         }
-    }
-
-
-    private Role getRole() {
-        String USER = "USER";
-        Optional<Role> roleOptional = roleScrolls.findByName(USER);
-        if (roleOptional.isPresent()) {
-            return roleOptional.get();
-        }
-        Role role = new Role();
-        role.setName(USER);
-        return roleScrolls.save(role);
     }
 
     private OTPDao createOtp(String emailId) {
